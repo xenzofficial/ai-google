@@ -4,5 +4,4 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 EXPOSE 8080
-# Gunakan proses manager untuk handle timeout
-CMD ["npm", "start"]
+CMD ["node", "--max-http-header-size=16384", "index.js"] # Handle headers besar
