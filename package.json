@@ -1,0 +1,25 @@
+{
+  "name": "qwen-api-proxy",
+  "version": "1.0.0",
+  "description": "API AI",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "api",
+    "qwen",
+    "proxy",
+    "koyeb"
+  ],
+  "author": "AL Official",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
