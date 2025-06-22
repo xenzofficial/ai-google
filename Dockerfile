@@ -1,20 +1,8 @@
-# Gunakan image Node.js LTS
 FROM node:18-alpine
-
-# Buat direktori kerja
 WORKDIR /app
-
-# Salin package.json terlebih dahulu (untuk caching)
-COPY package.json .
-
-# Install dependencies
+COPY package*.json ./
 RUN npm install
-
-# Salin semua file
 COPY . .
-
-# Expose port (sesuaikan dengan yang dipakai di index.js)
-EXPOSE 3000
-
-# Jalankan aplikasi
+EXPOSE 8080
+# Gunakan proses manager untuk handle timeout
 CMD ["npm", "start"]
