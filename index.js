@@ -1,7 +1,9 @@
-.const express = require('express');
+//
+const express = require('express');
 const fetch = require('node-fetch'); // node-fetch v2 for CommonJS
 const WebSocket = require('ws');
 const http = require('http');
+const path = require('path'); // Untuk menyajikan file HTML
 
 const setBot = `You are an expert on frontend design, you will always respond to web design tasks.
 Your task is to create a website using a SINGLE static HTML file. This file must contain all necessary HTML structure, CSS styles within a <style> tag (preferably in the <head>), and JavaScript code within a <script> tag (preferably at the end of the <body> or in <head> with 'defer').
@@ -60,6 +62,7 @@ Regardless of the technology used, follow these principles for all designs:
 Remember to only return code for the single HTML file (including inline CSS and JS) and nothing else.
 The resulting application should be visually impressive, highly functional, and something users would be proud to showcase.`;
 
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 app.use(express.json());
@@ -69,7 +72,6 @@ const wss = new WebSocket.Server({ server });
 
 // --- Fungsi Inti untuk Memproses Permintaan Qwen ---
 async function processQwenRequest(userPrompt, requestTimeoutMillis = 10 * 60 * 1000) {
-    // requestTimeoutMillis default 10 menit untuk WS, bisa dioverride lebih pendek untuk HTTP
     const baseData = {
         "stream": false, "incremental_output": true, "chat_type": "artifacts", "model": "qwen3-235b-a22b",
         "messages": [
@@ -90,7 +92,6 @@ async function processQwenRequest(userPrompt, requestTimeoutMillis = 10 * 60 * 1
     if (userMessageIndex !== -1) {
         requestData.messages[userMessageIndex].content = userPrompt;
     } else {
-        // Fallback, seharusnya tidak terjadi dengan struktur ini
         if (requestData.messages[1] && requestData.messages[1].role === "user") {
             requestData.messages[1].content = userPrompt;
         } else {
@@ -98,35 +99,56 @@ async function processQwenRequest(userPrompt, requestTimeoutMillis = 10 * 60 * 1
         }
     }
 
+    // --- HEADERS ASLI DARI PERMINTAAN ANDA ---
     const options = {
         method: 'POST',
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36',
-            'Content-Type': 'application/json',
-            'x-request-id': `req-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-            'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZlYWY4ODhmLWJiNTktNDhkZC04ODQ0LWI5OTI5OGQ1NmVhNSIsImV4cCI6MTc1MzA2NDcwNX0.c1DgpjRR04FtayZmbKwHyeR8cl3PcOaxfgyvFLGOdsk', // PERHATIAN: TOKEN EXPIRED
-            // ... (sisa header penting lainnya, pastikan bx-umidtoken, bx-ua, Cookie, dll, valid dan diperbarui jika perlu)
-            'bx-umidtoken': 'T2gAdb3Jqs_V26fFkIIHv_AbjC04jEk4Kpp3lebt-XeSvPRw1KUAb9xiryHQd1ok9ls=', // Contoh, mungkin perlu diganti
-             'Cookie': 'cna=SefaIJmSIQACAbYCL0RbM3OS; ...', // Contoh, mungkin perlu diganti
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36',
+          'Accept-Encoding': 'gzip, deflate, br, zstd',
+          'Content-Type': 'application/json',
+          'x-request-id': 'f0e676f4-4ecd-46c7-9313-992a44cc85d0', // Ini mungkin perlu di-generate unik per request
+          'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZlYWY4ODhmLWJiNTktNDhkZC04ODQ0LWI5OTI5OGQ1NmVhNSIsImV4cCI6MTc1MzA2NDcwNX0.c1DgpjRR04FtayZmbKwHyeR8cl3PcOaxfgyvFLGOdsk', // PERHATIAN: TOKEN INI AKAN EXPIRED
+          'bx-umidtoken': 'T2gAdb3Jqs_V26fFkIIHv_AbjC04jEk4Kpp3lebt-XeSvPRw1KUAb9xiryHQd1ok9ls=',
+          'x-accel-buffering': 'no',
+          'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+          'bx-ua': '231!zbp7hAmUhK3+j32+lA7TQXEjUq/YvqY2leOxacSC80vTPuB9lMZY9mRWFzrwLEV0PmcfY4rL2lSdPGet6eZTvMeBr8nc3dHDngm7uJYhfYE1huWCvpWrLMpk3S/BeoKEth704xl0zDzQL2iWkKsw5VFkEmUwhxiMHV/72VCHYcGpG9F0kpu1BmOSLE6n1O+I2AFPpeWXubUMp0TSNqjgaMH80l/byyC6nlmavTPNT2LEA8pZrICK2LKjwLPDe4eVhv4FUVwU6+/7aAkdW55xExuq/P94E8ARW07NECzr+hmepk4qk4MsH6oky3MoigNqPA+++4mW3i+h6XRm+mBtSoj0bGejYAtjDItW+++3NAo6wSko+jRHDjj09AjXNC6E3h+W+MELqi+zwm4+5VFW+Tt99YxjqCz4+IeWS+IUfejS68gN7KHW++j0jADjYCX+Y46RnosCo+r+vfjWr5ZYcqTp5HV2wtOHIy5JGkXQcKZbJe1uL8ZacCv63r/o3FDykIkaocRx4dgE1ZIu4r1+y8lYvfzMaKLdm7PGfyuWO4pguEWGxggv+MCpopwYcnT8lIn4uoStvnD/tWp8SWS1ol8ClIL/5v1UYgepD7+zm5f8btr+dMA2he/hbbK+14847bfG/ovNhSk/dSNQJl/C+hxhBCyS9+LuKYQ9CPAt8I7VoEgD2vnE664RWupKnnQr9G4aCS5wrNoUytR/Cw04f4I4T+UwIjS6/JDWJXfKAwhCGHSIROBY1nUhlK5FiiRCaKCARSYl0Aahb9SodyXUw7rzZKlQLqHg3XVS+AqI1VZIH8s7mpL/mwu1emzsvi2Ooxnlf2VHdo3zWuqNmBNU3o2K5VODbtwDyciStqi9rx4YZEK10a9potz5MP/0hK8AGR3ax4lLF87tlMH3wN3JMPfThmOl3fJ03cENhEOQH/WjQzUhrJwEIkclmJjhvX1L4syoT03dlXYeP0oQ0AAbVIxcrB0WpP//1okt2meHPdt8i+6xZxLYiqNdv3ei9lm1u2PvIOMD0jGshJCDElqXSKwILKZgRBQx+CbXgNYRXkCuG+OTB89OLQexSEQcAmyy7TeSct+gYDOTA9Psgw+DcF2b3hF5GUDVC07fs9jCV/eMsJcp7s+qWAGKw61n/cSncjWOermrKIcLJDtu2Yj2It2ttGE2STvfAIOfASNUHe+n0HaxxYYYieZIl4VPkpWxYQQ0Q5q44iPhBdkKNeCRS1Ua8Z+BDTvbVD647XpbGUNVRNnJaJvgRcX9X0ZW+yRqFkyWWipmaP3MnlO60CRFPiPMj72QdKO8TdLAqNq49AuJzu9oHbKTmKHqxzQAP3kJceZN1UK18VsX/WUjGWmjtUGlhBkrdolJS4atMxFUABdM0QCCkliJzwbNwxToXh49mvMcG7P5sLptVXIy9wd5q10cGcieLgoFn5l9hXfjd/wH/VbJSTmFiRCKbo6CuIeVekz30fIGVdZ69A5khnLQhig/nCOtZueO8kciGJ24Hk6hcEFwRSJYYpqP8IavbTLAhlI4K+HYFjGfWYIL+4HRC6QKAXbMRMyTqraNzcbnKbo0fxdfITJAww0PZc+08faM0WPjQYzSXQSSoeh/0d0HRJ5ZRz9BsYTz5Vf6feaOCRlVue466P9JaupUBQkJ9k5ITxMhas50TKcR+ZvXvoGpSD8FW4+GIi238yP7vtrk29gN68d6carvQ5BHObuTZYrDJvvSi6F0jKdqLRSvMZe7jd53P+xK9vAkxcQgZKuM358okRmoHy9V',
+          'sec-ch-ua-mobile': '?1',
+          'sec-ch-ua-platform': '"Android"',
+          'source': 'h5',
+          'DNT': '1',
+          'version': '0.0.118',
+          'bx-v': '2.5.31',
+          'Origin': 'https://chat.qwen.ai',
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Dest': 'empty',
+          'Referer': 'https://chat.qwen.ai/c/cece03ae-1152-460b-a5bf-549e033a5479',
+          'Accept-Language': 'id,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6',
+          // Cookie di-hardcode. Ini juga berpotensi jadi masalah jika API memerlukan cookie yang valid/dinamis.
+          'Cookie': 'cna=SefaIJmSIQACAbYCL0RbM3OS; acw_tc=0a03e55917504726415086933e4c4bad3a9facaab5d8c0b69c41f641cf6cc8; x-ap=ap-southeast-5; _bl_uid=g3mmIcvO5Ijmz87IIs1yopy8b60k; sca=128c2299; xlly_s=1; _gcl_au=1.1.2119113818.1750333767.791425251.1750472691.1750472690; _c_WBKFRo=I4xOpz9fP9h8wA3l47riQbn1ZRQ771uM77aE7hpp; _nb_ioWEgULi=; cnaui=6eaf888f-bb59-48dd-8844-b99298d56ea5; aui=6eaf888f-bb59-48dd-8844-b99298d56ea5; token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZlYWY4ODhmLWJiNTktNDhkZC04ODQ0LWI5OTI5OGQ1NmVhNSIsImV4cCI6MTc1MzA2NDc3Mn0.SpxakwQhkbQ_tKdLEucidDT49kPkznizdGubY1VWKKQ; atpsida=da94afa625f4421d6f646fb8_1750472928_9; tfstk=gBHSWWt6JX9cQTwdA7xVhRG0jGyI2nJNyMZKjDBPv8e8RMgEXWEPU3cIG2u7yYyJr9aI7kBJq3m8H-EaY7BLvJFIh2r6xXo82opx7kBReQq8DZEzeWcz8zzQdD060FJwQ0muK8Lw7doWGIzzITB8Jw5YHu2Q2SV2BRnuKJL2rXKZn00o_wTm2JKbHkZNyJF8ySKbAlaLpzFdksETkJeLyzFAMkrNJ9CReniYokeLJ2epc-U0vhnRdojQ70tr9SJ5HE7mAr6dpxZXcynS2omohuN7CjafpokbV7at2AOnzRZs1xNZw3d8kYmtTvFAP3aE3mhaumAFczkxD2qb1MXIcDntCSD9utqS9ckzkYLhEycZfYVmBF1N4zWa5uK1O64Rpoawcn1htXJvnK_eg9Buwoq4zntfTYV8moawcn1ht7E0mE-Xc6kl.; isg=BFlZXay6VZ6_VQkPEva6KFBgaEcz5k2YfWnDh3sOgAAYgj0UxzcTaq3UgRhRe-XQ; ssxmod_itna=QuG=5GOGCG7DODhcFGkDBCrG8D+anDl4BtGRSDIqGQGcD8gx0phB=c0If=eD8fzfC7xX5hzWG5tDlc7TYDE1uPreB3WhTuKQxSYmxe32eKjbmHWKICh073tYeDIz40=DcxDNDGexGCD8qDMUAhiUYeDG4GyQENDj4DEnqbPxBQM3rNDt4G+U7G54qGm/d+3Ld4DAMoPETNDAfeDKqDnATrD7uRv3xPwBrE5bff5tW6X8DhiLAhe0gh=D1xetA4CUU0fDAEi97xC3liz8te=anbCuWWSm=Kq2x=cbd6X/h6=DE+XxP51SgvPnPqn6PjDmlw=WevlGPYD; ssxmod_itna2=QuG=5GOGCG7DODhcFGkDBCrG8D+anDl4BtGRSDIqGQGcD8gx0phB=c0If=eD8fzfC7xX5hzWGHYD=hduI+NKCx03lCQ6hu5DBucDeT1aO8p31uKzl06=GQZBndk3CKxaXwu6OdwEswqRFlWi7gi9zUW0KXrctP0PQGgbqXZD+W4KPdjaI76hOKe9xaOHHNigqX2rHeISPkt0+TRuDTEYHE4qNT60Pk=9qM4xH=jdQE9K1UieFlig6k6GAe/BFFK9KMFGONia0GZSD1pvn70F7v9jBTtIHcIxq4Sy7PjEmqmHjvad7NGDmc8bffx1hsqlQahQY08xCxG2Den19RFIxNmotrjDcfF=isPdHHdkrjx3DdEf4Ld3IWhjxY/O3kitPl19Sbd8r3+aXhQLuGx4Tfw=D64dWGU75XO=xEivjAqRNM+5HGtebQc3YjOrd6=aCDYLxeS4/A807rl7Hd7T0GbdkrPT6W7v/LAYPaYY+fnOf8hGEaLSNUG38biyg4W8fhitd7qBGrWhxWxpCRNhRLDktMhbeGiFIQnoT26DAEkN7TWf=bTn4Kxs/=kAFXF7VG5vddwO5CQ9TKjE3kbd7+p77gr0n37hmTID8knH0wWzgLUYCGA1dLuhTZRDIx4pSU3iAxqMdm4Q/4hDxvNezP5SA5V7xDOxKYZAv5Q9bBiDD'
         },
+        // timeout: 300000, // Timeout untuk fetch ini akan dikontrol oleh AbortController
         body: JSON.stringify(requestData)
     };
+    // --- AKHIR HEADERS ASLI ---
+
 
     const qwenApiUrl = 'https://chat.qwen.ai/api/chat/completions';
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
         controller.abort();
-        console.log(`Request to ${qwenApiUrl} timed out after ${requestTimeoutMillis / 1000}s`);
+        console.log(`Request to ${qwenApiUrl} timed out after ${requestTimeoutMillis / 1000}s for prompt: "${userPrompt.substring(0,50)}..."`);
     }, requestTimeoutMillis);
 
-    options.signal = controller.signal;
+    options.signal = controller.signal; // Menambahkan signal AbortController ke options
 
-    console.log(`Sending request to Qwen API with prompt: "${userPrompt}", timeout: ${requestTimeoutMillis / 1000}s`);
+    console.log(`Sending request to Qwen API with prompt: "${userPrompt.substring(0,50)}...", timeout: ${requestTimeoutMillis / 1000}s`);
     const qwenResponse = await fetch(qwenApiUrl, options);
     clearTimeout(timeoutId);
 
     if (!qwenResponse.ok) {
         const errorText = await qwenResponse.text();
+        console.error(`Qwen API Error: ${qwenResponse.status} ${qwenResponse.statusText}. Prompt: "${userPrompt.substring(0,50)}...". Details: ${errorText.substring(0, 200)}`);
         const error = new Error(`Gagal menghubungi Qwen API: ${qwenResponse.status} ${qwenResponse.statusText}`);
         error.statusCode = qwenResponse.status;
         error.details = errorText;
@@ -135,58 +157,102 @@ async function processQwenRequest(userPrompt, requestTimeoutMillis = 10 * 60 * 1
 
     const qwenResult = await qwenResponse.json();
     if (qwenResult.choices && qwenResult.choices.length > 0 && qwenResult.choices[0].message && qwenResult.choices[0].message.content) {
+        console.log(`Successfully received response from Qwen for prompt: "${userPrompt.substring(0,50)}..."`);
         return qwenResult.choices[0].message.content;
     } else {
+        console.error("Struktur respons dari Qwen API tidak sesuai harapan:", qwenResult);
         const error = new Error("Gagal memproses respons dari Qwen API. Struktur tidak dikenali.");
-        error.qwenResponse = qwenResult; // Sertakan respons asli untuk debugging
+        error.qwenResponse = qwenResult;
         throw error;
     }
 }
 // --- End Fungsi Inti ---
 
 
-// --- Endpoint HTTP GET ---
-// Endpoint ini akan memiliki timeout yang lebih pendek
-app.get('/chat_http', async (req, res) => {
-    const userPrompt = req.query.prompt;
+// --- Penyimpanan Tugas untuk Polling (Dalam Memori) ---
+const tasks = {};
 
+// Fungsi untuk membersihkan tugas lama (opsional, untuk mencegah memory leak)
+function cleanupOldTasks() {
+    const now = Date.now();
+    let cleanedCount = 0;
+    for (const taskId in tasks) {
+        const taskAge = now - (tasks[taskId].completedAt || tasks[taskId].failedAt || tasks[taskId].createdAt);
+        const maxAge = (tasks[taskId].status === 'pending' ? 2 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000);
+        if (taskAge > maxAge) {
+            delete tasks[taskId];
+            cleanedCount++;
+        }
+    }
+    if (cleanedCount > 0) {
+        console.log(`Cleaned up ${cleanedCount} old tasks from memory.`);
+    }
+}
+setInterval(cleanupOldTasks, 30 * 60 * 1000);
+
+
+// --- Polling HTTP GET Endpoints ---
+app.get('/chat/start', (req, res) => {
+    const userPrompt = req.query.prompt;
     if (!userPrompt) {
         return res.status(400).json({ error: "Parameter 'prompt' dibutuhkan." });
     }
 
-    const HTTP_REQUEST_TIMEOUT = 120 * 1000; // 2 menit timeout untuk HTTP GET
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    tasks[taskId] = { status: 'pending', prompt: userPrompt, createdAt: Date.now() };
 
-    try {
-        console.log(`HTTP GET /chat_http received prompt: "${userPrompt}"`);
-        const aiContent = await processQwenRequest(userPrompt, HTTP_REQUEST_TIMEOUT);
-        res.json({ response: aiContent });
-    } catch (error) {
-        console.error("Error in /chat_http:", error);
-        if (error.name === 'AbortError') {
-            return res.status(504).json({ error: "Permintaan ke Qwen API timeout (batas waktu HTTP tercapai)." });
-        }
-        const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({
-            error: error.message || "Terjadi kesalahan internal.",
-            details: error.details,
-            qwenResponse: error.qwenResponse // Sertakan jika ada
+    console.log(`Task ${taskId} created for prompt: "${userPrompt.substring(0,50)}..."`);
+    res.status(202).json({ message: "Request received, processing started.", taskId: taskId });
+
+    const QWEN_PROCESS_TIMEOUT_POLLING = 10 * 60 * 1000; // 10 menit
+    processQwenRequest(userPrompt, QWEN_PROCESS_TIMEOUT_POLLING)
+        .then(aiContent => {
+            tasks[taskId] = { ...tasks[taskId], status: 'completed', response: aiContent, completedAt: Date.now() };
+            console.log(`Task ${taskId} completed.`);
+        })
+        .catch(error => {
+            console.error(`Task ${taskId} failed:`, error.message);
+            tasks[taskId] = {
+                ...tasks[taskId],
+                status: 'failed',
+                error: error.message || "Unknown error during Qwen processing",
+                details: error.details,
+                qwenResponse: error.qwenResponse,
+                failedAt: Date.now()
+            };
         });
+});
+
+app.get('/chat/status/:taskId', (req, res) => {
+    const taskId = req.params.taskId;
+    const task = tasks[taskId];
+
+    if (!task) {
+        return res.status(404).json({ error: "Task not found." });
+    }
+
+    if (task.status === 'completed') {
+        res.json({ status: task.status, response: task.response, taskId: taskId });
+    } else if (task.status === 'failed') {
+        res.json({ status: task.status, error: task.error, details: task.details, qwenResponse: task.qwenResponse, taskId: taskId });
+    } else {
+        res.json({ status: task.status, message: "Processing...", taskId: taskId });
     }
 });
 
 
 // --- WebSocket Server Logic ---
 console.log(`WebSocket Server is setting up...`);
-wss.on('connection', (ws) => {
-    console.log('Client connected to WebSocket');
+wss.on('connection', (ws, req) => {
+    console.log('Client connected to WebSocket from:', req.socket.remoteAddress);
 
     ws.on('message', async (message) => {
         let userPrompt;
         try {
-            const parsedMessage = JSON.parse(message);
+            const parsedMessage = JSON.parse(message.toString());
             userPrompt = parsedMessage.prompt;
         } catch (e) {
-            console.error("Failed to parse WS message or missing prompt:", message.toString());
+            console.error("Failed to parse WS message or missing prompt:", message.toString(), e);
             ws.send(JSON.stringify({ error: "Pesan tidak valid atau parameter 'prompt' tidak ditemukan. Pastikan mengirim JSON dengan key 'prompt'." }));
             return;
         }
@@ -196,17 +262,15 @@ wss.on('connection', (ws) => {
             return;
         }
 
-        console.log(`Received prompt via WebSocket: "${userPrompt}"`);
+        console.log(`Received prompt via WebSocket: "${userPrompt.substring(0,50)}..."`);
         ws.send(JSON.stringify({ status: "Processing your request via WebSocket..." }));
 
-        // Timeout yang lebih panjang untuk WebSocket
-        const WEBSOCKET_REQUEST_TIMEOUT = 10 * 60 * 1000; // 10 menit
-
+        const QWEN_PROCESS_TIMEOUT_WS = 10 * 60 * 1000; // 10 menit
         try {
-            const aiContent = await processQwenRequest(userPrompt, WEBSOCKET_REQUEST_TIMEOUT);
+            const aiContent = await processQwenRequest(userPrompt, QWEN_PROCESS_TIMEOUT_WS);
             ws.send(JSON.stringify({ response: aiContent }));
         } catch (error) {
-            console.error("Error processing WebSocket request to Qwen:", error);
+            console.error("Error processing WebSocket request to Qwen:", error.message);
             if (error.name === 'AbortError') {
                 ws.send(JSON.stringify({ error: "Permintaan ke Qwen API timeout (batas waktu WebSocket tercapai)." }));
             } else {
@@ -219,8 +283,8 @@ wss.on('connection', (ws) => {
         }
     });
 
-    ws.on('close', () => {
-        console.log('Client disconnected from WebSocket');
+    ws.on('close', (code, reason) => {
+        console.log(`Client disconnected from WebSocket. Code: ${code}, Reason: ${reason ? reason.toString() : 'N/A'}`);
     });
 
     ws.on('error', (error) => {
@@ -228,13 +292,20 @@ wss.on('connection', (ws) => {
     });
 });
 
+// --- Menyajikan File HTML Klien ---
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.get('/', (req, res) => {
-    res.send('Qwen API Proxy (HTTP & WebSocket) is running!');
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-const serverOverallTimeout = 15 * 60 * 1000; // Timeout server HTTP keseluruhan
+const serverOverallTimeout = 15 * 60 * 1000;
 server.listen(PORT, () => {
     console.log(`HTTP and WebSocket Server is running on port ${PORT}`);
+    console.log(`Klien dapat diakses di http://localhost:${PORT}`);
+    console.log(`  -> WebSocket terhubung ke ws://localhost:${PORT}`);
+    console.log(`  -> Polling GET dimulai dengan /chat/start?prompt=...`);
+    console.log(`  -> Status polling di /chat/status/:taskId`);
 }).setTimeout(serverOverallTimeout);
 
 console.log('Server setup complete.');
