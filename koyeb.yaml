@@ -1,0 +1,6 @@
+services:
+  - name: my-node-app
+    build:
+      command: npm install  # Sesuaikan
+    run:
+      command: node index.js  # Sesuaikan
