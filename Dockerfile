@@ -1,7 +1,20 @@
+# Gunakan image Node.js resmi dengan versi spesifik
 FROM node:18-alpine
-WORKDIR /app
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy package files terlebih dahulu untuk caching
 COPY package*.json ./
-RUN npm install
+
+# Install dependencies
+RUN npm install --production
+
+# Copy semua file aplikasi
 COPY . .
+
+# Expose port (sesuai dengan yang digunakan di aplikasi)
 EXPOSE 8080
-CMD ["node", "--max-http-header-size=16384", "index.js"] # Handle headers besar
+
+# Gunakan format CMD yang benar
+CMD ["node", "index.js"]  # Tanpa kurung siku tambahan!
