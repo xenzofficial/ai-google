@@ -2,9 +2,9 @@
   "name": "qwen-api-proxy",
   "version": "1.0.0",
   "description": "API AI",
-  "main": "index.js",
+  "main": "stream.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node stream.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
