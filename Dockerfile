@@ -1,20 +1,14 @@
-# Gunakan image Node.js resmi dengan versi spesifik
-FROM node:18-alpine
-
-# Set working directory
-WORKDIR /usr/src/app
-
-# Copy package files terlebih dahulu untuk caching
+# Stage 1: Build
+FROM node:18-alpine AS builder
+WORKDIR /app
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install --production
-
-# Copy semua file aplikasi
+RUN npm ci --only=production
 COPY . .
 
-# Expose port (sesuai dengan yang digunakan di aplikasi)
-EXPOSE 8080
-
-# Gunakan format CMD yang benar
-CMD ["node", "index.js"]  # Tanpa kurung siku tambahan!
+# Stage 2: Run
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app .
+EXPOSE 8080 8000
+HEALTHCHECK --interval=30s --timeout=300s --start-period=5s --retries=3 CMD node healthcheck.js
+CMD ["node", "--enable-source-maps", "index.js"]
