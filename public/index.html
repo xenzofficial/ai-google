@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-R-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen API Client (WS & Polling)</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        input[type="text"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 10px 15px; margin-right: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #ccc; }
+        pre { background-color: #e9e9e9; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-size: 0.9em; max-height: 400px; overflow-y: auto; }
+        .method-section { margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .error { color: red; font-weight: bold; }
+        .status { font-style: italic; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Qwen API Client</h1>
+
+        <div class="method-section">
+            <h2>Metode WebSocket (Direkomendasikan)</h2>
+            <input type="text" id="wsPromptInput" placeholder="Masukkan prompt untuk WebSocket...">
+            <button id="wsSendButton" onclick="sendWsPrompt()">Kirim via WebSocket</button>
+            <h3>Respons WebSocket:</h3>
+            <pre id="wsResponseOutput">Menunggu koneksi dan prompt...</pre>
+        </div>
+
+        <div class="method-section">
+            <h2>Metode HTTP GET + Polling</h2>
+            <input type="text" id="httpPromptInput" placeholder="Masukkan prompt untuk HTTP GET...">
+            <button id="httpSendButton" onclick="startChatAndPoll()">Mulai via HTTP GET & Poll</button>
+            <h3>Respons HTTP GET + Polling:</h3>
+            <pre id="httpResponseOutput">Menunggu prompt...</pre>
+        </div>
+    </div>
+
+    <script>
+        // --- WebSocket Logic ---
+        let socket;
+        const wsPromptInput = document.getElementById('wsPromptInput');
+        const wsSendButton = document.getElementById('wsSendButton');
+        const wsResponseOutput = document.getElementById('wsResponseOutput');
+
+        function connectWebSocket() {
+            const socketUrl = (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host;
+            socket = new WebSocket(socketUrl);
+
+            socket.onopen = function(event) {
+                console.log("WebSocket connection established.");
+                wsResponseOutput.textContent = "Terhubung ke server. Siap menerima prompt.";
+                wsSendButton.disabled = false;
+            };
+
+            socket.onmessage = function(event) {
+                console.log("Message from server (WS): ", event.data);
+                const data = JSON.parse(event.data);
+                let output = "";
+                if (data.status) {
+                    output += `<span class="status">Status: ${data.status}</span>\n\n`;
+                }
+                if (data.response) {
+                    output += `Respon AI:\n${escapeHtml(data.response)}`;
+                } else if (data.error) {
+                    output += `<span class="error">Error: ${escapeHtml(data.error)}</span>\n`;
+                    if (data.details) {
+                        output += `Detail: ${escapeHtml(data.details)}\n`;
+                    }
+                }
+                wsResponseOutput.innerHTML = output; // Use innerHTML for status/error styling
+            };
+
+            socket.onclose = function(event) {
+                console.log(`WS Connection closed. Code: ${event.code}, Reason: ${event.reason}`);
+                wsResponseOutput.innerHTML += `\n\n<span class="error">Koneksi WebSocket terputus. Kode: ${event.code}. Mencoba menghubungkan kembali dalam 5 detik...</span>`;
+                wsSendButton.disabled = true;
+                setTimeout(connectWebSocket, 5000);
+            };
+
+            socket.onerror = function(error) {
+                console.error(`WebSocket Error: `, error);
+                wsResponseOutput.innerHTML += `\n\n<span class="error">WebSocket Error. Lihat konsol.</span>`;
+                wsSendButton.disabled = true;
+            };
+        }
+
+        function sendWsPrompt() {
+            const promptText = wsPromptInput.value;
+            if (!promptText) {
+                alert("Masukkan prompt untuk WebSocket.");
+                return;
+            }
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const message = JSON.stringify({ prompt: promptText });
+                socket.send(message);
+                wsResponseOutput.innerHTML = `<span class="status">Prompt terkirim via WebSocket. Menunggu respons...</span>`;
+                console.log("Sent message to server (WS):", message);
+            } else {
+                alert("Koneksi WebSocket belum siap.");
+            }
+        }
+        connectWebSocket(); // Mulai koneksi WebSocket saat halaman dimuat
+        wsSendButton.disabled = true; // Disable tombol sampai konek
+
+
+        // --- HTTP GET + Polling Logic ---
+        const httpPromptInput = document.getElementById('httpPromptInput');
+        const httpSendButton = document.getElementById('httpSendButton');
+        const httpResponseOutput = document.getElementById('httpResponseOutput');
+        let pollingIntervalId = null;
+
+        async function startChatAndPoll() {
+            const promptText = httpPromptInput.value;
+            if (!promptText) {
+                alert("Masukkan prompt untuk HTTP GET.");
+                return;
+            }
+
+            if (pollingIntervalId) { // Hentikan polling sebelumnya jika ada
+                clearInterval(pollingIntervalId);
+                pollingIntervalId = null;
+            }
+            httpSendButton.disabled = true;
+            httpResponseOutput.innerHTML = `<span class="status">Memulai permintaan via HTTP GET...</span>`;
+
+            try {
+                const startResponse = await fetch(`/chat/start?prompt=${encodeURIComponent(promptText)}`);
+                if (!startResponse.ok) {
+                    const errorData = await startResponse.json();
+                    throw new Error(`Gagal memulai tugas: ${errorData.error || startResponse.statusText}`);
+                }
+                const startData = await startResponse.json();
+                const taskId = startData.taskId;
+                httpResponseOutput.innerHTML = `<span class="status">Tugas ${taskId} dimulai. Melakukan polling status...</span>`;
+
+                let attempts = 0;
+                const maxAttempts = 180; // Misal, polling maks 15 menit (180 * 5 detik)
+                const pollInterval = 5000; // 5 detik
+
+                pollingIntervalId = setInterval(async () => {
+                    attempts++;
+                    if (attempts > maxAttempts) {
+                        clearInterval(pollingIntervalId);
+                        pollingIntervalId = null;
+                        httpResponseOutput.innerHTML += `\n<span class="error">Polling timeout untuk tugas ${taskId}. Proses mungkin masih berjalan di server.</span>`;
+                        httpSendButton.disabled = false;
+                        return;
+                    }
+
+                    try {
+                        console.log(`Polling task ${taskId}, attempt ${attempts}`);
+                        const statusResponse = await fetch(`/chat/status/${taskId}`);
+                        if (!statusResponse.ok) {
+                            console.warn(`Pengecekan status untuk ${taskId} tidak OK: ${statusResponse.status}`);
+                            httpResponseOutput.innerHTML = `<span class="status">Tugas ${taskId}. Pengecekan status gagal (${statusResponse.status}). Mencoba lagi...</span> (Attempt ${attempts}/${maxAttempts})`;
+                            return;
+                        }
+                        const statusData = await statusResponse.json();
+                        let currentOutput = `<span class="status">Tugas ${taskId} status: ${statusData.status}.</span> (Attempt ${attempts}/${maxAttempts})`;
+
+                        if (statusData.status === 'completed') {
+                            clearInterval(pollingIntervalId);
+                            pollingIntervalId = null;
+                            currentOutput += `\n\nRespon AI:\n${escapeHtml(statusData.response)}`;
+                            httpSendButton.disabled = false;
+                        } else if (statusData.status === 'failed') {
+                            clearInterval(pollingIntervalId);
+                            pollingIntervalId = null;
+                            currentOutput += `\n\n<span class="error">Error: ${escapeHtml(statusData.error)}</span>`;
+                            if (statusData.details) {
+                                currentOutput += `\nDetail: ${escapeHtml(statusData.details)}`;
+                            }
+                            httpSendButton.disabled = false;
+                        }
+                        httpResponseOutput.innerHTML = currentOutput;
+
+                    } catch (pollError) {
+                        console.error("Error selama polling:", pollError);
+                        httpResponseOutput.innerHTML = `<span class="status">Tugas ${taskId}.</span>\n<span class="error">Error saat polling. Mencoba lagi...</span> (Attempt ${attempts}/${maxAttempts})`;
+                    }
+                }, pollInterval);
+
+            } catch (error) {
+                httpResponseOutput.innerHTML = `<span class="error">Error: ${escapeHtml(error.message)}</span>`;
+                console.error("Error in startChatAndPoll:", error);
+                httpSendButton.disabled = false;
+            }
+        }
+
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') {
+                try {
+                    return escapeHtml(JSON.stringify(unsafe, null, 2));
+                } catch (e) {
+                    return '[Tidak dapat menampilkan data]';
+                }
+            }
+            return unsafe
+                 .replace(/&/g, "&")
+                 .replace(/</g, "<")
+                 .replace(/>/g, ">")
+                 .replace(/"/g, """)
+                 .replace(/'/g, "'");
+        }
+
+    </script>
+</body>
+</html>
