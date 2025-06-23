@@ -8,18 +8,8 @@
   ],
   "routes": [
     {
-      "src": "/",
+      "src": "/(.*)",
       "dest": "index.js"
-    },
-    {
-      "src": "/chat",
-      "dest": "index.js",
-      "methods": ["POST"],
-      "headers": {
-        "Content-Type": "application/json",
-        "Connection": "keep-alive",
-        "Cache-Control": "no-cache"
-      }
     }
   ],
   "functions": {
