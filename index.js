@@ -38,7 +38,7 @@ const settingsBot = `You are an expert frontend designer who specializes in crea
 
 - The HTML file starts with \`<!DOCTYPE html>\` and ends with \`</html>\`.
 - Use <script type="text/babel"> for embedding JSX.
-- The entire website’s logic, layout, and styles must reside in this single file.
+- The entire website's logic, layout, and styles must reside in this single file.
 
 # Output Requirements
 
@@ -52,7 +52,8 @@ Build a polished, cohesive, accessible, mobile-first React website in a single H
 
 # Output Format
 
-The full content of the single \`index.html\` file exactly as it would be saved and opened in a modern browser, beginning with \`<!DOCTYPE html>\` and ending with \`</html>\`.`
+The full content of the single \`index.html\` file exactly as it would be saved and opened in a modern browser, beginning with \`<!DOCTYPE html>\` and ending with \`</html>\`.`;
+
 const server = http.createServer(async (req, res) => {
     if (req.url === '/' && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -124,7 +125,7 @@ const server = http.createServer(async (req, res) => {
 
                     .main-content {
                         display: grid;
-                        grid-template-columns: 1fr 2fr; /* Kolom untuk form dan output */
+                        grid-template-columns: 1fr 2fr;
                         gap: 30px;
                     }
 
@@ -217,12 +218,12 @@ const server = http.createServer(async (req, res) => {
                     #output-section {
                         border: 1px solid var(--border-color);
                         border-radius: 8px;
-                        overflow: hidden; /* Untuk menjaga border-radius pada konten di dalamnya */
+                        overflow: hidden;
                     }
                     
                     .tabs {
                         display: flex;
-                        background-color: var(--input-bg-color); /* Sedikit lebih gelap dari surface */
+                        background-color: var(--input-bg-color);
                     }
 
                     .tab-button {
@@ -248,8 +249,8 @@ const server = http.createServer(async (req, res) => {
                     
                     .tab-content {
                         display: none;
-                        height: 600px; /* Atur tinggi output area */
-                        background-color: var(--bg-color); /* Lebih gelap untuk kontras */
+                        height: 600px;
+                        background-color: var(--bg-color);
                     }
 
                     .tab-content.active {
@@ -257,14 +258,14 @@ const server = http.createServer(async (req, res) => {
                     }
 
                     #preview-container {
-                        position: relative; /* Untuk placeholder */
+                        position: relative;
                     }
 
                     #live-preview-iframe {
                         width: 100%;
                         height: 100%;
                         border: none;
-                        background-color: #fff; /* iframe background default */
+                        background-color: #fff;
                     }
 
                     #iframe-placeholder {
@@ -320,10 +321,9 @@ const server = http.createServer(async (req, res) => {
                         color: var(--text-muted-color);
                     }
 
-                    /* Responsive adjustments */
                     @media (max-width: 992px) {
                         .main-content {
-                            grid-template-columns: 1fr; /* Stack form dan output */
+                            grid-template-columns: 1fr;
                         }
                         header h1 {
                             font-size: 2.2em;
@@ -441,7 +441,7 @@ const server = http.createServer(async (req, res) => {
                     const tabButtons = document.querySelectorAll('.tab-button');
                     const tabContents = document.querySelectorAll('.tab-content');
 
-                    let fullHtmlContent = ''; // Untuk mengakumulasi konten HTML
+                    let fullHtmlContent = '';
 
                     tabButtons.forEach(button => {
                         button.addEventListener('click', () => {
@@ -466,12 +466,11 @@ const server = http.createServer(async (req, res) => {
                         const webColors = document.getElementById('web-colors').value;
                         const webDescription = document.getElementById('web-description').value;
 
-                        // Konstruksi Prompt yang Canggih
                         let userPrompt = \`Buatlah sebuah website dengan spesifikasi berikut:
-Jenis Web: \${webType}\
-Tema: \${webTheme}\
-Warna/Palet: \${webColors || 'Pilihkan palet yang sesuai dengan tema'}\
-Deskripsi Tambahan: \${webDescription || 'buat sekreatif mungkin.'}\
+Jenis Web: \${webType}
+Tema: \${webTheme}
+Warna/Palet: \${webColors || 'Pilihkan palet yang sesuai dengan tema'}
+Deskripsi Tambahan: \${webDescription || 'buat sekreatif mungkin.'}
 Gunakan css :root untuk font warna dan lainya
 
 #Berikan code tanpa markdown tanpa penjelasan tanpa teks only code\`;
@@ -480,9 +479,8 @@ Gunakan css :root untuk font warna dan lainya
                         buttonText.textContent = 'Generating...';
                         generateButton.disabled = true;
 
-                        // Reset output areas
                         fullHtmlContent = '';
-                        livePreviewIframe.srcdoc = ''; // Clear iframe
+                        livePreviewIframe.srcdoc = '';
                         generatedCodeBlock.textContent = 'AI sedang merajut kode... 🧠';
                         iframePlaceholder.style.display = 'block';
                         iframePlaceholder.textContent = 'AI sedang merajut kode... 🧠';
@@ -523,39 +521,23 @@ Gunakan css :root untuk font warna dan lainya
                                             if (delta && delta.phase === 'answer') {
                                                 if (!isAnswerPhase) {
                                                     isAnswerPhase = true;
-                                                    fullHtmlContent = ''; // Mulai dari awal jika ini fase jawaban baru
-                                                    generatedCodeBlock.textContent = ''; // Kosongkan juga tampilan kode
-                                                    iframePlaceholder.style.display = 'none'; // Sembunyikan placeholder
+                                                    fullHtmlContent = '';
+                                                    generatedCodeBlock.textContent = '';
+                                                    iframePlaceholder.style.display = 'none';
                                                 }
                                                 if (delta.content) {
                                                     fullHtmlContent += delta.content;
-                                                    generatedCodeBlock.textContent = fullHtmlContent; // Update kode mentah
-                                                    
-                                                    // Update iframe secara bertahap
-                                                    // Untuk performa, bisa di-debounce jika update terlalu sering
+                                                    generatedCodeBlock.textContent = fullHtmlContent;
                                                     livePreviewIframe.srcdoc = fullHtmlContent; 
                                                 }
-                                            } else if (delta && delta.content && !isAnswerPhase) { 
-                                                // Kadang ada konten sebelum 'answer' phase, bisa diabaikan atau ditangani
-                                                // Untuk sekarang kita tunggu 'answer' phase untuk konten utama
-                                                // generatedCodeBlock.textContent = delta.content; // Tampilkan status 'thinking' jika ada
+                                            } else if (delta && delta.content && !isAnswerPhase) {
                                             }
                                         } catch (err) {
-                                            // Jika gagal parse JSON, mungkin itu bagian dari stream yang belum lengkap
-                                            // atau teks biasa. Kita bisa coba append jika memang diharapkan teks biasa
-                                            // Untuk sekarang kita log error parsing
-                                            // console.warn('Gagal mem-parsing chunk JSON:', line, err);
-                                            // Jika fullHtmlContent sudah mulai terisi, kemungkinan ini lanjutan data HTML
-                                            if (isAnswerPhase && line.trim() && !line.trim().startsWith('event:')) {
-                                               // Ini mungkin bagian dari HTML yang terpotong antar chunk JSON
-                                               // Atau teks non-JSON lainnya dari stream. Hati-hati menambahkannya.
-                                               // Untuk web generator, kita biasanya mengharapkan semua konten dalam delta.content
-                                            }
                                         }
                                     }
                                 }
                             }
-                            if (!isAnswerPhase && fullHtmlContent === '') { // Jika tidak ada fase 'answer' atau konten
+                            if (!isAnswerPhase && fullHtmlContent === '') {
                                 generatedCodeBlock.textContent = 'Tidak ada output HTML yang valid dari AI. Coba lagi dengan prompt berbeda.';
                                 iframePlaceholder.textContent = 'Gagal menghasilkan web. Coba lagi.';
                                 iframePlaceholder.style.display = 'block';
@@ -570,7 +552,6 @@ Gunakan css :root untuk font warna dan lainya
                            generateButton.classList.remove('loading');
                            buttonText.textContent = 'Generate Website';
                            generateButton.disabled = false;
-                           // Form input tidak di-clear agar pengguna bisa refine
                         }
                     });
 
@@ -586,7 +567,6 @@ Gunakan css :root untuk font warna dan lainya
                                     alert('Gagal menyalin. Silakan salin manual.');
                                 });
                         } else {
-                            // Fallback untuk browser lama atau jika tidak ada konten
                             try {
                                 const textArea = document.createElement("textarea");
                                 textArea.value = generatedCodeBlock.textContent;
@@ -602,7 +582,6 @@ Gunakan css :root untuk font warna dan lainya
                             }
                         }
                     });
-
                 </script>
             </body>
             </html>
@@ -616,19 +595,17 @@ Gunakan css :root untuk font warna dan lainya
             try {
                 const { prompt } = JSON.parse(body);
 
-                // API Payload tetap sama, hanya 'prompt' yang berubah dari client
                 const data = {
                     "stream": true,
                     "incremental_output": true,
                     "chat_type": "artifacts",
-                    "model": "qwen3-235b-a22b", // Atau model lain yang mendukung pembuatan kode
+                    "model": "qwen3-235b-a22b",
                     "messages": [
                         {
                             "role": "system",
                             "content": settingsBot
                         },
                         {
-                            // "id": "4095b26c-b850-4ab3-b01e-940eb5ec454c",
                             "role": "user",
                             "content": prompt,
                             "extra": { "meta": { "subChatType": "web_dev" } },
@@ -636,9 +613,8 @@ Gunakan css :root untuk font warna dan lainya
                             "chat_type": "artifacts"
                         }
                     ],
-                    "session_id": "e5d4bb9b-1d36-4041-b69a-eab4a06872b6", // Session ID bisa di-generate atau di-manage per user session
-                    "chat_id": "cece03ae-1152-460b-a5bf-549e033a5479",   // Chat ID bisa di-generate atau di-manage
-                    // "id": "9c0502e3-438f-4f7e-8cf6-81ea6a343457", // Sebaiknya ID unik per request
+                    "session_id": "e5d4bb9b-1d36-4041-b69a-eab4a06872b6",
+                    "chat_id": "cece03ae-1152-460b-a5bf-549e033a5479",
                     "sub_chat_type": "web_dev",
                     "chat_mode": "normal"
                 };
@@ -649,12 +625,12 @@ Gunakan css :root untuk font warna dan lainya
                         'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36',
                         'Accept-Encoding': 'gzip, deflate, br, zstd',
                         'Content-Type': 'application/json',
-                        'x-request-id': require('crypto').randomBytes(16).toString('hex'), // Generate unique request ID
-                        'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZlYWY4ODhmLWJiNTktNDhkZC04ODQ0LWI5OTI5OGQ1NmVhNSIsImV4cCI6MTc1MzA2NDcwNX0.c1DgpjRR04FtayZmbKwHyeR8cl3PcOaxfgyvFLGOdsk', // GANTI DENGAN TOKEN VALID ANDA
-                        'bx-umidtoken': 'T2gAdb3Jqs_V26fFkIIHv_AbjC04jEk4Kpp3lebt-XeSvPRw1KUAb9xiryHQd1ok9ls=', // Token ini mungkin perlu diperbarui atau digenerate
+                        'x-request-id': require('crypto').randomBytes(16).toString('hex'),
+                        'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZlYWY4ODhmLWJiNTktNDhkZC04ODQ0LWI5OTI5OGQ1NmVhNSIsImV4cCI6MTc1MzA2NDcwNX0.c1DgpjRR04FtayZmbKwHyeR8cl3PcOaxfgyvFLGOdsk',
+                        'bx-umidtoken': 'T2gAdb3Jqs_V26fFkIIHv_AbjC04jEk4Kpp3lebt-XeSvPRw1KUAb9xiryHQd1ok9ls=',
                         'x-accel-buffering': 'no',
                         'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-                        'bx-ua': '231!zbp7hAmUhK3+j32+lA7TQXEjUq/YvqY2leOxacSC80vTPuB9lMZY9mRWFzrwLEV0PmcfY4rL2lSdPGet6eZTvMeBr8nc3dHDngm7uJYhfYE1huWCvpWrLMpk3S/BeoKEth704xl0zDzQL2iWkKsw5VFkEmUwhxiMHV/72VCHYcGpG9F0kpu1BmOSLE6n1O+I2AFPpeWXubUMp0TSNqjgaMH80l/byyC6nlmavTPNT2LEA8pZrICK2LKjwLPDe4eVhv4FUVwU6+/7aAkdW55xExuq/P94E8ARW07NECzr+hmepk4qk4MsH6oky3MoigNqPA+++4mW3i+h6XRm+mBtSoj0bGejYAtjDItW+++3NAo6wSko+jRHDjj09AjXNC6E3h+W+MELqi+zwm4+5VFW+Tt99YxjqCz4+IeWS+IUfejS68gN7KHW++j0jADjYCX+Y46RnosCo+r+vfjWr5ZYcqTp5HV2wtOHIy5JGkXQcKZbJe1uL8ZacCv63r/o3FDykIkaocRx4dgE1ZIu4r1+y8lYvfzMaKLdm7PGfyuWO4pguEWGxggv+MCpopwYcnT8lIn4uoStvnD/tWp8SWS1ol8ClIL/5v1UYgepD7+zm5f8btr+dMA2he/hbbK+14847bfG/ovNhSk/dSNQJl/C+hxhBCyS9+LuKYQ9CPAt8I7VoEgD2vnE664RWupKnnQr9G4aCS5wrNoUytR/Cw04f4I4T+UwIjS6/JDWJXfKAwhCGHSIROBY1nUhlK5FiiRCaKCARSYl0Aahb9SodyXUw7rzZKlQLqHg3XVS+AqI1VZIH8s7mpL/mwu1emzsvi2Ooxnlf2VHdo3zWuqNmBNU3o2K5VODbtwDyciStqi9rx4YZEK10a9potz5MP/0hK8AGR3ax4lLF87tlMH3wN3JMPfThmOl3fJ03cENhEOQH/WjQzUhrJwEIkclmJjhvX1L4syoT03dlXYeP0oQ0AAbVIxcrB0WpP//1okt2meHPdt8i+6xZxLYiqNdv3ei9lm1u2PvIOMD0jGshJCDElqXSKwILKZgRBQx+CbXgNYRXkCuG+OTB89OLQexSEQcAmyy7TeSct+gYDOTA9Psgw+DcF2b3hF5GUDVC07fs9jCV/eMsJcp7s+qWAGKw61n/cSnc1jOermrKIcLJDtu2Yj2It2ttGE2STvfAIOfASNUHe+n0HaxxYYYieZIl4VPkpWxYQQ0Q5q44iPhBdkKNeCRS1Ua8Z+BDTvbVD647XpbGUNVRNnJaJvgRcX9X0ZW+yRqFkyWWipmaP3MnlO60CRFPiPMj72QdKO8TdLAqNq49AuJzu9oHbKTmKHqxzQAP3kJceZN1UK18VsX/WUjGWmjtUGlhBkrdolJS4atMxFUABdM0QCCkliJzwbNwxToXh49mvMcG7P5sLptVXIy9wd5q10cGcieLgoFn5l9hXfjd/wH/VbJSTmFiRCKbo6CuIeVekz30fIGVdZ69A5khnLQhig/nCOtZueO8kciGJ24Hk6hcEFwRSJYYpqP8IavbTLAhlI4K+HYFjGfWYIL+4HRC6QKAXbMRMyTqraNzcbnKbo0fxdfITJAww0PZc+08faM0WPjQYzSXQSSoeh/0d0HRJ5ZRz9BsYTz5Vf6feaOCRlVue466P9JaupUBQkJ9k5ITxMhas50TKcR+ZvXvoGpSD8FW4+GIi238yP7vtrk29gN68d6carvQ5BHObuTZYrDJvvSi6F0jKdqLRSvMZe7jd53P+xK9vAkxcQgZKuM358okRmoHy9V', // Nilai bx-ua mungkin juga perlu dinamis
+                        'bx-ua': '231!zbp7hAmUhK3+j32+lA7TQXEjUq/YvqY2leOxacSC80vTPuB9lMZY9mRWFzrwLEV0PmcfY4rL2lSdPGet6eZTvMeBr8nc3dHDngm7uJYhfYE1huWCvpWrLMpk3S/BeoKEth704xl0zDzQL2iWkKsw5VFkEmUwhxiMHV/72VCHYcGpG9F0kpu1BmOSLE6n1O+I2AFPpeWXubUMp0TSNqjgaMH80l/byyC6nlmavTPNT2LEA8pZrICK2LKjwLPDe4eVhv4FUVwU6+/7aAkdW55xExuq/P94E8ARW07NECzr+hmepk4qk4MsH6oky3MoigNqPA+++4mW3i+h6XRm+mBtSoj0bGejYAtjDItW+++3NAo6wSko+jRHDjj09AjXNC6E3h+W+MELqi+zwm4+5VFW+Tt99YxjqCz4+IeWS+IUfejS68gN7KHW++j0jADjYCX+Y46RnosCo+r+vfjWr5ZYcqTp5HV2wtOHIy5JGkXQcKZbJe1uL8ZacCv63r/o3FDykIkaocRx4dgE1ZIu4r1+y8lYvfzMaKLdm7PGfyuWO4pguEWGxggv+MCpopwYcnT8lIn4uoStvnD/tWp8SWS1ol8ClIL/5v1UYgepD7+zm5f8btr+dMA2he/hbbK+14847bfG/ovNhSk/dSNQJl/C+hxhBCyS9+LuKYQ9CPAt8I7VoEgD2vnE664RWupKnnQr9G4aCS5wrNoUytR/Cw04f4I4T+UwIjS6/JDWJXfKAwhCGHSIROBY1nUhlK5FiiRCaKCARSYl0Aahb9SodyXUw7rzZKlQLqHg3XVS+AqI1VZIH8s7mpL/mwu1emzsvi2Ooxnlf2VHdo3zWuqNmBNU3o2K5VODbtwDyciStqi9rx4YZEK10a9potz5MP/0hK8AGR3ax4lLF87tlMH3wN3JMPfThmOl3fJ03cENhEOQH/WjQzUhrJwEIkclmJjhvX1L4syoT03dlXYeP0oQ0AAbVIxcrB0WpP//1okt2meHPdt8i+6xZxLYiqNdv3ei9lm1u2PvIOMD0jGshJCDElqXSKwILKZgRBQx+CbXgNYRXkCuG+OTB89OLQexSEQcAmyy7TeSct+gYDOTA9Psgw+DcF2b3hF5GUDVC07fs9jCV/eMsJcp7s+qWAGKw61n/cSnc1jOermrKIcLJDtu2Yj2It2ttGE2STvfAIOfASNUHe+n0HaxxYYYieZIl4VPkpWxYQQ0Q5q44iPhBdkKNeCRS1Ua8Z+BDTvbVD647XpbGUNVRNnJaJvgRcX9X0ZW+yRqFkyWWipmaP3MnlO60CRFPiPMj72QdKO8TdLAqNq49AuJzu9oHbKTmKHqxzQAP3kJceZN1UK18VsX/WUjGWmjtUGlhBkrdolJS4atMxFUABdM0QCCkliJzwbNwxToXh49mvMcG7P5sLptVXIy9wd5q10cGcieLgoFn5l9hXfjd/wH/VbJSTmFiRCKbo6CuIeVekz30fIGVdZ69A5khnLQhig/nCOtZueO8kciGJ24Hk6hcEFwRSJYYpqP8IavbTLAhlI4K+HYFjGfWYIL+4HRC6QKAXbMRMyTqraNzcbnKbo0fxdfITJAww0PZc+08faM0WPjQYzSXQSSoeh/0d0HRJ5ZRz9BsYTz5Vf6feaOCRlVue466P9JaupUBQkJ9k5ITxMhas50TKcR+ZvXvoGpSD8FW4+GIi238yP7vtrk29gN68d6carvQ5BHObuTZYrDJvvSi6F0jKdqLRSvMZe7jd53P+xK9vAkxcQgZKuM358okRmoHy9V',
                         'sec-ch-ua-mobile': '?1',
                         'sec-ch-ua-platform': '"Android"',
                         'source': 'h5',
@@ -665,7 +641,7 @@ Gunakan css :root untuk font warna dan lainya
                         'Sec-Fetch-Site': 'same-origin',
                         'Sec-Fetch-Mode': 'cors',
                         'Sec-Fetch-Dest': 'empty',
-                        'Referer': 'https://chat.qwen.ai/c/cece03ae-1152-460b-a5bf-549e033a5479', // Referer bisa di-update jika chat_id berubah
+                        'Referer': 'https://chat.qwen.ai/c/cece03ae-1152-460b-a5bf-549e033a5479',
                         'Accept-Language': 'id,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6',
                         'Cookie': 'cna=SefaIJmSIQACAbYCL0RbM3OS; acw_tc=0a03e55917504726415086933e4c4bad3a9facaab5d8c0b69c41f641cf6cc8; x-ap=ap-southeast-5; _bl_uid=g3mmIcvO5Ijmz87IIs1yopy8b60k; sca=128c2299; xlly_s=1; _gcl_au=1.1.2119113818.1750333767.791425251.1750472691.1750472690; _c_WBKFRo=I4xOpz9fP9h8wA3l47riQbn1ZRQ771uM77aE7hpp; _nb_ioWEgULi=; cnaui=6eaf888f-bb59-48dd-8844-b99298d56ea5; aui=6eaf888f-bb59-48dd-8844-b99298d56ea5; token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZlYWY4ODhmLWJiNTktNDhkZC04ODQ0LWI5OTI5OGQ1NmVhNSIsImV4cCI6MTc1MzA2NDc3Mn0.SpxakwQhkbQ_tKdLEucidDT49kPkznizdGubY1VWKKQ; atpsida=da94afa625f4421d6f646fb8_1750472928_9; tfstk=gBHSWWt6JX9cQTwdA7xVhRG0jGyI2nJNyMZKjDBPv8e8RMgEXWEPU3cIG2u7yYyJr9aI7kBJq3m8H-EaY7BLvJFIh2r6xXo82opx7kBReQq8DZEzeWcz8zzQdD060FJwQ0muK8Lw7doWGIzzITB8Jw5YHu2Q2SV2BRnuKJL2rXKZn00o_wTm2JKbHkZNyJF8ySKbAlaLpzFdksETkJeLyzFAMkrNJ9CReniYokeLJ2epc-U0vhnRdojQ70tr9SJ5HE7mAr6dpxZXcynS2omohuN7CjafpokbV7at2AOnzRZs1xNZw3d8kYmtTvFAP3aE3mhaumAFczkxD2qb1MXIcDntCSD9utqS9ckzkYLhEycZfYVmBF1N4zWa5uK1O64Rpoawcn1htXJvnK_eg9Buwoq4zntfTYV8moawcn1ht7E0mE-Xc6kl.; isg=BFlZXay6VZ6_VQkPEva6KFBgaEcz5k2YfWnDh3sOgAAYgj0UxzcTaq3UgRhRe-XQ; ssxmod_itna=QuG=5GOGCG7DODhcFGkDBCrG8D+anDl4BtGRSDIqGQGcD8gx0phB=c0If=eD8fzfC7xX5hzWG5tDlc7TYDE1uPreB3WhTuKQxSYmxe32eKjbmHWKICh073tYeDIz40=DcxDNDGexGCD8qDMUAhiUYeDG4GyQENDj4DEnqbPxBQM3rNDt4G+U7G54qGm/d+3Ld4DAMoPETNDAfeDKqDnATrD7uRv3xPwBrE5bff5tW6X8DhiLAhe0gh=D1xetA4CUU0fDAEi97xC3liz8te=anbCuWWSm=Kq2x=cbd6X/h6=DE+XxP51SgvPnPqn6PjDmlw=WevlGPYD; ssxmod_itna2=QuG=5GOGCG7DODhcFGkDBCrG8D+anDl4BtGRSDIqGQGcD8gx0phB=c0If=eD8fzfC7xX5hzWGHYD=hduI+NKCx03lCQ6hu5DBucDeT1aO8p31uKzl06=GQZBndk3CKxaXwu6OdwEswqRFlWi7gi9zUW0KXrctP0PQGgbqXZD+W4KPdjaI76hOKe9xaOHHNigqX2rHeISPkt0+TRuDTEYHE4qNT60Pk=9qM4xH=jdQE9K1UieFlig6k6GAe/BFFK9KMFGONia0GZSD1pvn70F7v9jBTtIHcIxq4Sy7PjEmqmHjvad7NGDmc8bffx1hsqlQahQY08xCxG2Den19RFIxNmotrjDcfF=isPdHHdkrjx3DdEf4Ld3IWhjxY/O3kitPl19Sbd8r3+aXhQLuGx4Tfw=D64dWGU75XO=xEivjAqRNM+5HGtebQc3YjOrd6=aCDYLxeS4/A807rl7Hd7T0GbdkrPT6W7v/LAYPaYY+fnOf8hGEaLS1UG38biyg4W8fhitd7qBGrWhxWxpCRNhRLDktMhbeGiFIQnoT26DAEkN7TWf=bTn4Kxs/=kAFXF7VG5vddwO5CQ9TKjE3kbd7+p77gr0n37hmTID8knH0wWzgLUYCGA1dLuhTZRDIx4pSU3iAxqMdm4Q/4hDxvNezP5SA5V7xDOxKYZAv5Q9bBiDD'
                     },
@@ -676,12 +652,12 @@ Gunakan css :root untuk font warna dan lainya
 
                 if (!apiResponse.ok) {
                     const errorText = await apiResponse.text();
-                    console.error('API Error Response Body:', errorText); // Log error body
+                    console.error('API Error Response Body:', errorText);
                     throw new Error(`API request failed with status ${apiResponse.status}: ${errorText}`);
                 }
                 
                 res.writeHead(200, {
-                    'Content-Type': 'application/octet-stream', // Penting untuk SSE (Server-Sent Events) style stream
+                    'Content-Type': 'application/octet-stream',
                     'Connection': 'keep-alive',
                     'Cache-Control': 'no-cache',
                 });
