@@ -609,7 +609,7 @@ Gunakan css :root untuk font warna dan lainya
                             "role": "user",
                             "content": prompt,
                             "extra": { "meta": { "subChatType": "web_dev" } },
-                            "feature_config": { "thinking_enabled": false, "output_schema": "phase", //"thinking_budget": 1024 },
+                            "feature_config": { "thinking_enabled": false, "output_schema": "phase"},
                             "chat_type": "artifacts"
                         }
                     ],
