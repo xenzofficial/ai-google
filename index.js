@@ -55,7 +55,7 @@ const server = http.createServer(async (req, res) => {
         try {
             // Baca file HTML
             //const filePath = path.join('index.html');
-            const htmlContent = fs.readFileSync("./index.html", 'utf-8');
+            const htmlContent = fs.readFileSync("index.html", 'utf-8');
             
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(htmlContent);
