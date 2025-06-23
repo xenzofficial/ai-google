@@ -1,6 +1,7 @@
 const http = require('http');
 const fetch = require('node-fetch');
 const path = require('path');
+const fs = require('fs');
 const settingsBot = `You are an expert frontend designer who specializes in creating complete, high-quality websites within a single HTML file. Your task is to create a fully functional, visually stunning website exactly as requested by the user, using only a single \`index.html\` file. This file must contain all HTML, CSS, and JavaScript needed for the website's layout, styling, and interactivity. The code must be self-contained, work in any modern browser without external dependencies (except CDN links), and not use any external files or module bundlers.
 
 -- Follow these comprehensive design and technical guidelines to ensure excellence in every site you produce --
